@@ -1,0 +1,38 @@
+name: Sync GitHub Events to Notion
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+
+jobs:
+  sync_to_notion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Notion Page
+        env:
+          NOTION_KEY: ${{ secrets.NOTION_API_KEY }}
+          DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+          EVENT_TITLE: ${{ github.event.issue.title || github.event.pull_request.title }}
+          EVENT_URL: ${{ github.event.issue.html_url || github.event.pull_request.html_url }}
+          EVENT_TYPE: ${{ github.eventName }}
+        run: |
+          curl -X POST https://api.notion.com/v1/pages \
+            -H "Authorization: Bearer $NOTION_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Notion-Version: 2022-06-28" \
+            --data '{
+              "parent": { "database_id": "'"$DATABASE_ID"'" },
+              "properties": {
+                "Name": {
+                  "title": [{ "text": { "content": "'"$EVENT_TITLE"'" } }]
+                },
+                "Type": {
+                  "select": { "name": "'"$EVENT_TYPE"'" }
+                },
+                "URL": {
+                  "url": "'"$EVENT_URL"'"
+                }
+              }
+            }'
